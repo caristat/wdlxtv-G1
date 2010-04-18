@@ -1,0 +1,3 @@
+#!/bin/sh
+
+rm /tmp/init.d/S10hostname /tmp/init.d/S10portmap /tmp/init.d/S20netmodules.sh

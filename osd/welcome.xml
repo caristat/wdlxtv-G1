@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<page background="image/welcome_background_bg.jpg" wait_seconds="3">
+  <image image="image/welcome_logo.png" x="503" y="239" w="280" h="187"/>
+  <text text="Loading WDLXTV firmware..." x="320" y="420" w="680" h="38" fontsize="36" textcolor="0xFFFFFF" align="hcenter"/>
+  <text id="headline" text="http://b-rad.cc" x="490" y="470" w="330" h="44" fontsize="40" textcolor="0xFFFFFF" align="hcenter"/>
+  <!-- fixed -->
+  <include filename="/tmp/ip-welcome.asp" />
+  <include filename="./decoration.xml" />
+</page>

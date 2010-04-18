@@ -1,0 +1,9 @@
+#!/bin/sh
+
+cd /tmp/init.d
+
+for i in `ls -R S*`; do
+	if [ "$i" != "s99post-init" ] && [ "$i" != "S70dmaosd" ] && 
+	   [ "$i" != "S00user-script" ] && [ "$i" != "S00custom-script" ] ; then
+		$i stop
+done

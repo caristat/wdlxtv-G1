@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2004, REDSonic, inc. -->
+<!-- Author: Charles Wang <cwang@redsonic.com> -->
+<page background="image/welcome_background_bg.jpg" type="basic">
+
+<text text="@@browse_title_icon" x="247" y="156" w="250" h="44" fontsize="42" textcolor="0x07b5ff"/>
+<text text="@@pagecounter" x="517" y="171" w="124" h="26" fontsize="24" textcolor="0xe2e2e2"/>
+<listbox valkey="browselist" move="page" cols="1" rows="6" lbmask="lu" more_select="right" loop_scroll="1" />
+    <image image="@@moreprev" x="447" y="198" w="40" h="29"/>
+    <table x="283" y="235" w="359" h="307"
+         cols="1" rows="6" colspacing="0" rowspacing="0"
+         lbimage="image/villa_movies_select_bar_left.png" fontsize="20" selected_fontsize="26">
+    <text text="@@browse_0_text" xmargin="87" ymargin="14"
+          lightbar="@@lightbar-browselist-0" active="@@act-browselist-0"/>
+
+    <text text="@@browse_1_text" xmargin="87" ymargin="14"
+          lightbar="@@lightbar-browselist-1" active="@@act-browselist-1"/>
+
+    <text text="@@browse_2_text" xmargin="87" ymargin="14"
+          lightbar="@@lightbar-browselist-2" active="@@act-browselist-2"/>
+
+    <text text="@@browse_3_text" xmargin="87" ymargin="14"
+          lightbar="@@lightbar-browselist-3" active="@@act-browselist-3"/>
+
+    <text text="@@browse_4_text" xmargin="87" ymargin="14"
+          lightbar="@@lightbar-browselist-4" active="@@act-browselist-4"/>
+
+    <text text="@@browse_5_text" xmargin="87" ymargin="14"
+          lightbar="@@lightbar-browselist-5" active="@@act-browselist-5"/>
+
+    </table>
+    <image image="@@morenext" x="447" y="548" w="40" h="29"/>
+
+<wrapper x="292" w="341" h="1">
+    <image image="@@browse_0_line" ymargin="0" y="285"/>
+    <image image="@@browse_1_line" ymargin="0" y="336"/>
+    <image image="@@browse_2_line" ymargin="0" y="387"/>
+    <image image="@@browse_3_line" ymargin="0" y="438"/>
+    <image image="@@browse_4_line" ymargin="0" y="489"/>
+    <image image="@@browse_5_line" ymargin="0" y="540"/>
+</wrapper>
+<wrapper x="325" w="23" h="31" align="hcenter" scale_type="fixratio" scale="100">
+    <image image="@@browse_0_thumbnail" default_image="@@browse_0_default_image" y="246"/>
+    <image image="@@browse_1_thumbnail" default_image="@@browse_1_default_image" y="298"/>
+    <image image="@@browse_2_thumbnail" default_image="@@browse_2_default_image" y="349"/>
+    <image image="@@browse_3_thumbnail" default_image="@@browse_3_default_image" y="400"/>
+    <image image="@@browse_4_thumbnail" default_image="@@browse_4_default_image" y="451"/>
+    <image image="@@browse_5_thumbnail" default_image="@@browse_5_default_image" y="501"/>
+</wrapper>
+<!-- movie infomation -->
+<wrapper x="780" w="90" h="20" fontsize="18" textcolor="0x999999">
+    <text text="File Size:" y="509"/>
+    <text text="File Type:" y="558"/>
+    <text text="Gener:" y="606"/>
+</wrapper>
+<wrapper x="878" w="210" h="20" fontsize="18" textcolor="0xffffff">
+    <text text="@@filesize" y="509"/>
+    <text text="@@filetype" y="558"/>
+    <text text="@@filegener" y="606"/>
+</wrapper>
+<wrapper x="771" w="332" h="1" image="image/villa_fileManagement_line_right.png" bg="1">
+    <image y="540"/>
+    <image y="589"/>
+    <image y="638"/>
+</wrapper>
+<!-- movie pip -->
+<image image="image/villa_movies_frame.png" x="741" y="204" w="393" h="282"/>
+<image image="@@preview_rect_image" default_image="@@default_preview_rect_image" x="770" y="233" w="333" h="222" textcolor="@@preview_rect_color" keycolor="1" ignore_keycolor="1"/>
+<image image="image/villa_movies_frame_top.png" x="741" y="204" w="393" h="282"/>
+
+	<include filename="./inc_loading.xml"/>
+
+</page>

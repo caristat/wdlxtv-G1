@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# usage:  xmount  MOUNT_PATH  NAME   FSTYPE   OPTIONS
+
+if [ "$4" == "" ]; then
+  O="defaults"
+else
+  O="$4"
+fi
+
+if [ "$3" == "cifs" ]; then
+  modprobe cifs
+  [ $? != 0 ] && logger -t xmount -p warning "CIFS/Samba mount failed! download samba.app.bin from http://b-rad.cc" && exit 1
+  if [ "$O" == "defaults" ]; then
+    O="user=guest"
+  fi
+fi
+
+if [ "$3" == "nfs" ] ; then
+  modprobe nfs
+  [ $? != 0 ] && logger -t xmount -p warning "NFS mount failed! download nfs.app.bin from http://b-rad.cc" && exit 1
+  if [ "$O" == "defaults" ]; then
+    O="soft,intr"
+  fi
+fi
+
+if [ "$3" == "xfs" ] ; then 
+  modprobe xfs
+  [ $? != 0 ] && logger -t xmount -p warning "XFS mount failed! download core-extras.app.bin from http://b-rad.cc" && exit 1
+fi
+
+if [ "$3" == "reiserfs" ] ; then 
+  modprobe reiserfs
+  [ $? != 0 ] && logger -t xmount -p warning "ReiserFS mount failed! download core-extras.app.bin from http://b-rad.cc" && exit 1
+fi
+
+mLoc=""
+if [ "$4" != "NOMOUNT" ] ; then
+	mountpoint "/tmp/media/usb/$2" -q && logger -t xmount -p warning "partition with label ($2) already mounted!" && exit 1
+	mkdir -p "/tmp/media/usb/$2"
+	mount -t $3 $1 "/tmp/media/usb/$2" -o $O
+
+	if [ $? == 0 ] ; then
+		cat /etc/mtab | egrep "^$1" | grep /tmp/media/usb/$2 >> /etc/fstab
+		mLoc="/tmp/media/usb/$2"
+		logger -t xmount "xmounted $1"
+	else
+		rmdir "/tmp/media/usb/$2"
+		exit 1
+	fi
+else
+	mLoc="`cat /proc/mounts | grep $1 | grep /tmp/media/usb/ | head -n 1 | cut -d' ' -f2 | sed -e 's/\\040/\ /'`"
+fi
+
+mountpoint -q "$mLoc"
+if [ $? == 0 -a -e "$mLoc/.dontAddMount" ] ; then
+	UUID="`blkid | egrep "^$1" | sed -e 's/^.*UUID=\"//' -e 's/\".*$//'`"
+	[ "$UUID" == "" ] && UUID="`echo $1 | cut -d'/' -f3`"
+	echo $UUID >> /tmp/.dontAddMounts
+fi
+
+exit 0

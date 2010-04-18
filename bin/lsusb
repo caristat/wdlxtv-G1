@@ -1,0 +1,12 @@
+#!/bin/sh
+
+echo "Displaying detected USB devices..."
+for a in /sys/bus/usb/devices/* ; do
+ if [ -f $a/idVendor ]; then
+  if [ -f $a/serial ]; then
+   echo " [`cat $a/idVendor`:`cat $a/idProduct`] `basename $a`(`cat $a/version`,`cat $a/speed`m) `cat $a/product`/`cat $a/serial`"
+  else
+   echo " [`cat $a/idVendor`:`cat $a/idProduct`] `basename $a`(`cat $a/version`,`cat $a/speed`m) `cat $a/product`"
+  fi
+ fi
+done

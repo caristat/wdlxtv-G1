@@ -1,0 +1,111 @@
+#!/bin/sh
+
+. ./sysconfig 
+
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+mount -t tmpfs none /tmp
+
+mount -t proc none /proc
+mount -t usbfs usb /proc/bus/usb
+mount -t sysfs sysfs /sys
+mkdir -p /tmp/.root/etc
+cp /etc/mdev.conf /tmp/.root/etc/mdev.conf
+mount -o bind /tmp/.root/etc/mdev.conf /etc/mdev.conf
+echo /sbin/mdev > /proc/sys/kernel/hotplug
+mount -t tmpfs mdev /dev
+mdev -s
+
+mkdir /dev/pts
+mount -t devpts devpts /dev/pts
+
+ln -s $SYSCONF_BOOTLOADER_MTD_PARTITION /dev/mtdblock_bootloader
+ln -s $SYSCONF_KERNEL_MTD_PARTITION /dev/mtdblock_kernel
+ln -s $SYSCONF_FIRMWARE_MTD_PARTITION /dev/mtdblock_romfs
+
+mkdir -p /tmp/.root/lib/modules/2.6.15-TvDock
+cp -s /lib/modules/2.6.15-TvDock-orig/*.ko /lib/modules/2.6.15-TvDock
+cp /lib/modules/2.6.15-TvDock-orig/modules.dep /lib/modules/2.6.15-TvDock/modules.dep
+mkdir -p /tmp/.root/lib/firmware
+cp -s /lib/firmware-orig/* /lib/firmware
+
+/sbin/ldconfig -C /tmp/ld.so.cache
+
+cp /etc/securetty.ori /tmp
+
+if [ "$1" == "upgrade" ]; then
+	/sbin/config_tool -l &
+	touch /tmp/STOP_DMARENDER
+	touch /tmp/STOP_PICRENDER
+else
+	/sbin/config_tool -l -m 10 &
+fi
+
+if [ "$1" == "f1f1" ]; then
+	echo "enter f1 test ..."
+	/bin/sh
+fi
+
+if [ "$1" == "sisi" ]; then
+	echo "enter si test ..."
+	mount /dev/sda /tmp/media/usb
+	if [ $? != 0 ]; then
+		echo "Mounting /dev/sda fail, try to mount /dev/sda1 to /tmp/media/usb"
+		mount /dev/sda1 /tmp/media/usb
+		if [ $? != 0 ]; then
+			echo "Mounting /dev/sda1 still fail, abort!!!"
+			/bin/sh
+		fi
+	fi
+	/tmp/media/usb/runsit.sh
+	/bin/sh
+fi
+
+/etc/init.d/sys-init
+
+ifconfig lo 127.0.0.1
+echo "127.0.0.1 localhost.localdomain localhost" >> /etc/hosts
+. /etc/init.d/host-config
+
+mkdir -p /tmp/media/usb
+
+if [ "`egrep -i '^WDLXTV=OFF' /conf/config`" == "" ]; then
+	if [ "`egrep -i '^LOGGING=OFF' /conf/config`" == "" ]; then
+		syslogd -O /tmp/messages.txt 
+		klogd
+		VER=`cat /conf_src/version`
+		logger "${VER}"
+		lsusb | logger &
+	fi
+
+	modprobe discoloop max_loop=24
+	. /bin/crazymount
+
+	tail -f /tmp/messages.txt | plug.watch 2>/dev/null &
+	mount.watch 2>/dev/null &
+fi
+
+[ ! -f "/conf/shadow" ] && cp /etc/shadow.orig /conf/shadow
+[ ! -f "/conf/passwd" ] && cp /etc/passwd.orig /conf/passwd
+[ ! -f "/conf/group" ] && cp /etc/group.orig /conf/group
+
+if [ -f /tmp/emergency.flash ]; then
+	killall config_tool
+	/sbin/config_tool -l &
+	touch /tmp/STOP_DMARENDER
+	touch /tmp/STOP_PICRENDER
+	sh /etc/init.d/rcS `cat /tmp/emergency.flash` &
+elif [ "`egrep -i '^RC=ON' /conf/config`" == "" ] &&
+     [ "`egrep -i '^WDLXTV=OFF' /conf/config`" != "" ] ||
+     [ "`egrep -i '^RC=OFF' /conf/config`" != "" ] ; then
+	/etc/init.d/S70dmaosd $1 $2 $3 &
+#elif [ "$1" == "upgrade" ]; then  # debug
+#	sh /etc/init.d/rcS &
+else
+	sh /etc/init.d/rcS $1 $2 $3 &
+fi
+
+while [ 1 ]; do 
+		/bin/sh ;
+done
+

@@ -1,0 +1,24 @@
+/lib/modules/2.6.15-TvDock/asix.ko: /lib/modules/2.6.15-TvDock/usbnet.ko /lib/modules/2.6.15-TvDock/mii.ko
+/lib/modules/2.6.15-TvDock/catc.ko:
+/lib/modules/2.6.15-TvDock/cdc_ether.ko: /lib/modules/2.6.15-TvDock/usbnet.ko
+/lib/modules/2.6.15-TvDock/cdc_subset.ko: /lib/modules/2.6.15-TvDock/usbnet.ko
+/lib/modules/2.6.15-TvDock/cdrom.ko:
+/lib/modules/2.6.15-TvDock/discoloop.ko:
+/lib/modules/2.6.15-TvDock/dm9601.ko:
+/lib/modules/2.6.15-TvDock/fipkernel.ko:
+/lib/modules/2.6.15-TvDock/gl620a: /lib/modules/2.6.15-TvDock/usbnet.ko
+/lib/modules/2.6.15-TvDock/irkernel.ko:
+/lib/modules/2.6.15-TvDock/kaweth.ko:
+/lib/modules/2.6.15-TvDock/libphy.ko:
+/lib/modules/2.6.15-TvDock/mcs7830.ko: /lib/modules/2.6.15-TvDock/usbnet.ko
+/lib/modules/2.6.15-TvDock/mii.ko:
+/lib/modules/2.6.15-TvDock/net1080.ko: /lib/modules/2.6.15-TvDock/usbnet.ko
+/lib/modules/2.6.15-TvDock/pegasus.ko: /lib/modules/2.6.15-TvDock/mii.ko
+/lib/modules/2.6.15-TvDock/plusb.ko: /lib/modules/2.6.15-TvDock/usbnet.ko
+/lib/modules/2.6.15-TvDock/rndis_host.ko: /lib/modules/2.6.15-TvDock/cdc_ether.ko
+/lib/modules/2.6.15-TvDock/rtl8150.ko:
+/lib/modules/2.6.15-TvDock/sckernel.ko:
+/lib/modules/2.6.15-TvDock/sr_mod.ko: /lib/modules/2.6.15-TvDock/cdrom.ko
+/lib/modules/2.6.15-TvDock/tango2_enet.ko:
+/lib/modules/2.6.15-TvDock/usbnet.ko:
+/lib/modules/2.6.15-TvDock/zlib_deflate.ko:

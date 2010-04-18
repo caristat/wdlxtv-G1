@@ -1,0 +1,11 @@
+#!/bin/sh
+
+IP2=`cat /tmp/current.ip 2> /dev/null`
+[ "$IP2" == "" ] && IP2="no IP"
+HOST=`hostname`
+
+for a in `ls /osd/*.asp` ; do
+  cp $a /tmp/
+  f=`basename $a`
+  sed -i /tmp/$f -e "s/\<\? HOST \?\>/$HOST/g" -e "s/\<\? IP2 \?\>/$IP2/g"
+done

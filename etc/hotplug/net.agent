@@ -1,0 +1,139 @@
+#!/bin/sh
+[ -f /tmp/sys.path ] &&  . /tmp/sys.path
+
+logger "net.agent:  Called for $MDEV"
+# hotplug (ala busybox mdev) network autoconfig agent
+
+if [ "$ACTION" == "add" ]; then
+  # A /tmp/net.config will override settings in /conf/net.config
+  DHCP="yes"
+
+  if [ -f /tmp/net.config ]; then
+	. /tmp/net.config
+  else
+	[ -f /conf/net.config ] && dos2unix /conf/net.config && chmod a+x /conf/net.config && . /conf/net.config
+  fi
+  if [ "$HOST" == "" ]; then
+	HOST=`hostname`
+  	logger "net.agent: Using system hostname $HOST"
+  else
+	hostname $HOST
+  fi
+ 
+  if [ "$IP" = "" ]; then
+  	DHCP="yes"
+  	logger "net.agent: No IP provided, doing DHCP"
+  fi
+  if [ "$MTU" != "" ]; then
+    ifconfig $INTERFACE mtu $MTU
+  fi
+  if [ "$DHCP" == "yes" ]; then
+    udhcpc  -H "$HOST" -i "$INTERFACE"
+    ifconfig $INTERFACE
+  else
+    cat /conf/resolv.conf /tmp/resolv.conf.new > /etc/resolv.conf
+    for a in '' 1 2 3 4 5; do
+      if [ "${DNS$a}" != "" ]; then
+        echo "nameserver ${DNS$a}" >> /etc/resolv.conf
+      fi
+    done
+    if [ "$NM" != "" ]; then
+      O="netmask $NM $O"
+    fi
+    ifconfig $INTERFACE $IP up
+    ifconfig $INTERFACE
+    if [ "$GW" != "" ]; then
+      ip route add 0/0 via $GW
+      # TEST to see if the IP info is correct!  (only possible if gw defined)
+      PINGCOUNT=6
+      logger "Testing static IP assignment..."
+      SUCCESS=`ping -c $PINGCOUNT $GW | grep "packets received"`
+      logger Ping: $SUCCESS
+      SUCCESS=`echo $SUCCESS |cut -d' ' -f4`
+      if [ $SUCCESS -eq 0 ]; then
+        logger "IP Assignment failed.  Trying DHCP"
+        udhcpc -H "$HOST" -i "$INTERFACE"
+      fi
+    fi
+  fi
+
+  if [ "$TZ" != "" ]; then
+    echo $TZ > /etc/TZ
+  fi
+
+  
+if [ "`grep -i \^NTP=\'OFF\' /conf/config`" == "" ] ; then
+	logger -t net.agent "net.agent: Using $NTPSERVER to set system time"
+	eval `grep \^NTPSERVER= /conf/config`
+	eval `grep \^NTP_DELAY= /conf/config`
+	[ "$NTPSERVER" == "" ] && NTPSERVER="pool.ntp.org"
+        echo $NTP_DELAY | egrep '^[0-9]*$' -q
+       	if [ $? == 0 ] && [ "$NTP_DELAY" != "" ] ; then
+		sleep $NTP_DELAY && ntpclient -c 1 -h $NTPSERVER -s && ntpclient -c 1 -h $NTPSERVER & 
+	else
+		sleep 5 && ntpclient -c 1 -h $NTPSERVER -s && ntpclient -c 1 -h $NTPSERVER &
+	fi
+fi
+
+  # Put the current IP address into /tmp/current.ip
+  # (if dhcp fails, it _could_ be 0.0.0.0)
+  IP=`ip addr ls dev $INTERFACE | grep inet | sed 's/^.* inet //' | cut -d'/' -f1`
+  GW=`ip route|grep default|cut -d' ' -f3`
+  NM=`ifconfig $MDEV | grep inet|sed 's/^.*Mask://'|cut -d' ' -f1`
+  logger "Device $MDEV configged as $IP/$GW/$NM"
+#   These are _INFORMATIONAL_ (and used to generate dynamic pages)
+    config_tool -c IP2=$IP
+    config_tool -c GATEWAY2=$GW
+    config_tool -c NETMASK2=$NM
+
+  echo $IP > /tmp/current.ip # informational
+  u_asp
+
+  [ -f /conf/hosts ] && cat /conf/hosts >> /etc/hosts
+
+  if [ -f /conf/net.mounts ]; then
+  	logger "net.mounts: loading /conf/net.mounts"
+	dos2unix /conf/net.mounts
+	chmod a+x /conf/net.mounts
+	eval `grep \^NET_MOUNTS_DELAY= /conf/config`
+        echo $NET_MOUNTS_DELAY | egrep '^[0-9]*$' -q
+       	if [ $? == 0 ] && [ "$NET_MOUNTS_DELAY" != "" ] ; then
+	  	logger -t net.agent "executing net.mounts after ${NET_MOUNTS_DELAY}s: loading /conf/net.mounts" && sleep $NET_MOUNTS_DELAY && . /conf/net.mounts &
+	else
+		logger -t net.agent "net.mounts: loading /conf/net.mounts" && . /conf/net.mounts
+	fi
+  fi
+
+        eval `grep \^NET_MOUNTS_DELAY= /conf/config`
+        echo $NET_MOUNTS_DELAY | egrep '^[0-9]*$' -q
+        if [ $? == 0 ] && [ "$NET_MOUNTS_DELAY" != "" ] ; then
+		[ -f /tmp/net.mounts ] && logger -t net.agent "executing net.mounts after ${NET_MOUNTS_DELAY}s: loading /tmp/net.mounts" && sleep $NET_MOUNTS_DELAY && . /tmp/net.mounts &
+	else
+		[ -f /tmp/net.mounts ] && logger -t net.agent "net.mounts: loading /tmp/net.mounts" && . /tmp/net.mounts &
+	fi
+fi
+
+# this section is probably not needed. :)
+if [ "$ACTION" == "remove" ]; then
+  logger net.agent: removing device $MDEV
+
+  logger net.agent: umounting net shares
+  if [ -e "/conf/net.mounts" ] ; then
+	for i in `cat /conf/net.mounts | egrep '^xmount' | cut -d' ' -f 3`; do
+		umount /tmp/media/usb/$i
+		rmdir /tmp/media/usb/$i
+	done
+  fi
+  if [ -e "/tmp/net.mounts" ] ; then
+	for i in `cat /conf/net.mounts | egrep '^xmount' | cut -d' ' -f 3`; do
+                umount /tmp/media/usb/$i
+		rmdir /tmp/media/usb/$i
+	done
+  fi
+
+  PID=`/bin/ps|/bin/egrep "udhcpc[ ].*$INTERFACE"|/bin/sed 's/^ *//'|/usr/bin/cut -d ' ' -f 1`
+  if [ "$PID" -gt 1 ]; then
+    kill $PID
+  fi
+fi
+

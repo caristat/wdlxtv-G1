@@ -1,0 +1,14 @@
+#!/bin/sh
+#   Copyright (C) 2009 Brad Love
+#     http://b-rad.cc/cd-manager
+#       This program is free software; you can redistribute it and/or
+#       modify it under the terms of the GNU General Public License
+#       as published by the Free Software Foundation; either version 2
+#       of the License, or (at your option) any later version.
+
+mkdir -p /tmp/init.d
+cp /etc/init.d/s99post-init /tmp/init.d/S99post-init
+echo "cd.mount /dev/$MDEV" >> /tmp/init.d/S99post-init
+
+cd-manager /dev/$MDEV &
+

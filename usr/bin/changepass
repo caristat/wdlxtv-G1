@@ -1,0 +1,55 @@
+#!/bin/sh
+
+if [ $# -ne 2 ]; then
+ echo "Usage:"
+ echo "-> Change Password: changepass [user] [newpass]"
+ echo "-> Delete Password: changepass -d [user]"
+ exit
+fi
+
+TMPFILE="/tmp/tmpshadowfile.$$"
+SHADOW=`cat /etc/shadow`
+
+if [ -f $TMPFILE ]; then
+ echo "Removing temp file."
+ rm -f $TMPFILE
+fi
+
+if [ $1 = '-d' ]; then
+ CLEAN=TRUE
+ THEUSER=$2
+ THEPASS=""
+else 
+ CLEAN=FALSE
+ THEUSER=$1
+ THEPASS=$2
+fi
+
+echo "Changing "$THEUSER" password."
+
+
+for CUR in $SHADOW; do
+ USER=`echo $CUR | cut -d':' -f1`
+ if [ $USER = $THEUSER ]; then
+  if [ $CLEAN = "TRUE" ]; then
+   PASS=""
+  else
+   PASS=`cryptpw -a md5 $THEPASS`
+  fi
+  REST=`echo $CUR | cut -d':' -f3,4,5,6,7,8,9`
+  echo $USER:$PASS:$REST >> $TMPFILE
+ else
+  echo $CUR >> $TMPFILE
+ fi
+done
+
+if [ -f $TMPFILE ]; then
+ cp -rf /etc/shadow /tmp/shadow.old
+ if [ -L /etc/shadow ]; then
+  cat $TMPFILE > /etc/shadow &
+ else
+  mv -f $TMPFILE /etc/shadow &
+ fi
+fi
+
+echo "Password changed."

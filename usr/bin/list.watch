@@ -1,0 +1,80 @@
+#!/bin/sh
+
+[ "`egrep -i '^LISTWATCH=OFF' /conf/config`" != "" ] && exit 0
+
+OLDTHUMBRESO=120x180
+OLDLISTNUM=8
+OLDGENTHUMBS=15
+OLDUSBICONS=no
+CONFIGMODTIME=0
+while [ true ]; do
+   NEWCONFIGMODTIME=`stat -t /conf/config | cut -d' ' -f13`
+   if [ $CONFIGMODTIME != $NEWCONFIGMODTIME ] ; then
+	CONFIGMODTIME=$NEWCONFIGMODTIME
+	eval `grep \^THUMBRESO= /conf/config`
+	eval `grep \^GENTHUMBS= /conf/config`
+	eval `grep \^LISTNUM= /conf/config`
+	eval `grep \^USBICONS= /conf/config`
+	[ "$THUMBRESO" == "" ] && config_tool -c THUMBRESO=120x180 && THUMBRESO=120x180
+	[ "$GENTHUMBS" == "" ] && config_tool -c GENTHUMBS=15 && GENTHUMBS=15
+	[ "$LISTNUM" == "" ] && config_tool -c LISTNUM=8 && LISTNUM=8
+
+	if [ "$OLDUSBICONS" != "$USBICONS" ] ; then
+		if [ "$USBICONS" == "yes" ] ; then
+		    mkdir -p /tmp/cache/tmp/media/usb
+		    cp -f /osd/image/USB1.thumb /tmp/cache/tmp/media/usb/USB1.thumb
+		    cp -f /osd/image/USB2.thumb /tmp/cache/tmp/media/usb/USB2.thumb
+		else
+			rm /tmp/cache/tmp/media/usb/USB1.thumb
+			rm /tmp/cache/tmp/media/usb/USB2.thumb
+		fi
+	fi		
+
+	if [ $THUMBRESO != $OLDTHUMBRESO ]; then
+		if [ -f /osd/basic_browse_thumb_video.${THUMBRESO}.xml ] ; then
+			umount /osd/basic_browse_thumb_video.xml 2> /dev/null
+                        umount /osd/inc_video_thumb_browse.xml 2> /dev/null
+                        mount -o bind /osd/basic_browse_thumb_video.${THUMBRESO}.xml /osd/basic_browse_thumb_video.xml
+                        mount -o bind /osd/inc_video_thumb_browse.${THUMBRESO}.xml /osd/inc_video_thumb_browse.xml
+                        logger "Switching to $THUMBRESO thumb view"
+		else
+			umount /osd/basic_browse_thumb_video.xml 2> /dev/null
+                        umount /osd/inc_video_thumb_browse.xml 2> /dev/null
+                        logger "Switching to default 120x180 thumb view"
+		fi
+	fi
+
+	if [ $GENTHUMBS != $OLDGENTHUMBS ]; then
+		if [ -f /osd/basic_browse_thumb.${GENTHUMBS}.xml ]; then
+			umount /osd/basic_browse_thumb.xml 2> /dev/null
+			umount /osd/inc_thumb_browse.xml 2> /dev/null
+			mount -o bind /osd/basic_browse_thumb.${GENTHUMBS}.xml /osd/basic_browse_thumb.xml
+			mount -o bind /osd/inc_thumb_browse.${GENTHUMBS}.xml /osd/inc_thumb_browse.xml
+			logger "Switching to $GENTHUMBS music/photo thumb view"
+		else
+			umount /osd/basic_browse_thumb.xml 2> /dev/null
+                        umount /osd/inc_thumb_browse.xml 2> /dev/null
+                        logger "Switching to default 10 music/photo thumb view"
+                fi
+	fi
+
+	if [ $LISTNUM != $OLDLISTNUM ]; then
+		if [ -f /osd/basic_browse.${LISTNUM}.xml ]; then
+			umount /osd/basic_browse.xml 2> /dev/null
+			umount /osd/inc_list_browse.xml 2> /dev/null
+			mount -o bind /osd/basic_browse.${LISTNUM}.xml /osd/basic_browse.xml
+			mount -o bind /osd/inc_list_browse.${LISTNUM}.xml /osd/inc_list_browse.xml
+			logger "Switching to $LISTNUM item list view"
+		else
+			umount /osd/basic_browse.xml 2> /dev/null
+			umount /osd/inc_list_browse.xml 2> /dev/null
+			logger "Switching to default 8 item list view"
+		fi
+	fi
+
+	OLDLISTNUM=$LISTNUM
+	OLDTHUMBRESO=$THUMBRESO
+	OLDGENTHUMBS=$GENTHUMBS
+   fi
+   sleep 2
+done

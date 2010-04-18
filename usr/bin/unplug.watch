@@ -1,0 +1,24 @@
+#!/bin/sh
+
+while [ true ] ; do 
+	x=`cat /proc/mounts | egrep '^/dev/sd[a-z].' | egrep -v 'ntfs|fuse|vfat|msdos|hfs|hfsplus' | cut -d' ' -f 1`
+
+	for i in $x; do 
+		y=`cat /proc/mounts | grep $i | tail -n 1`
+		PARTITION=`echo $y | cut -d' ' -f 1 | cut -d'/' -f 3`
+		DEVICE=`echo $PARTITION | sed -e 's/[0-9]*//g'`
+		MP=`echo $y | cut -d' ' -f 2`	
+		FSTYPE=`echo $y | cut -d' ' -f 3`
+		if [ ! -e /sys/block/$DEVICE ] ; then 
+			logger "/dev/$DEVICE unplugged, cleaning up"
+			umount $MP && rmdir $MP
+			if [ $? != 0 ] ; then
+				logger "unplug cleanup failed! did you unplug a system drive?"
+			else
+				cat /etc/fstab | grep -v $MP > /tmp/fstab.new
+				mv /tmp/fstab.new /etc/fstab
+			fi
+		fi
+	done
+	usleep 500000
+done

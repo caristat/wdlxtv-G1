@@ -1,0 +1,9 @@
+#!/bin/sh
+
+cd /tmp/init.d
+rm /tmp/init.d/S99post-init
+
+for i in `ls S*`; do
+	if [ "$i" != "S70dmaosd" ] ; then
+		$i start
+done

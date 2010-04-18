@@ -1,0 +1,40 @@
+#!/bin/sh
+
+sync
+
+for i in "`ls /tmp/init.d/S* -r`" ; do
+	if [ -f "$i" ]; then
+		export APATH=`readlink $i|sed -e 's/etc\/init.*$//'`
+	     # set APATH to the mount location of the application.bin
+		[ "$APATH" != "" ] && app="`basename $APATH`"
+		if [ "$app" != "/" ] && [ -f /tmp/appsRoot ]; then
+			AROOT="`cat /tmp/appsRoot | grep $app`"
+			[ "$AROOT" != "" ] && export AROOT="`dirname $AROOT`"
+		        # set AROOT to the actual location of the application.bin
+		fi
+	     case "$i" in
+	        *~)
+	        	;;
+		*)
+		    # No sh extension, so fork subprocess.
+		    if [ "$i" == "/tmp/init.d/S99post-init" ] ||
+		       [ "$i" == "/tmp/init.d/S70dmaosd" ] ||
+                       [ "$i" == "/tmp/init.d/S00user-script" ] ||
+		       [ "$i" == "/tmp/init.d/S00custom-options" ] ; then
+			x='x'			
+		    else
+			$i stop
+		    fi
+		    ;;
+    	esac
+	fi
+done
+
+for i in "`cat /etc/mtab | egrep '^/dev/s' | cut -d' ' -f 2`"; do
+	umount -f $i
+done
+
+
+#suspend   < paste all the above into suspend
+
+busybox reboot -f $*

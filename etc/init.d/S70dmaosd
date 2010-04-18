@@ -1,0 +1,21 @@
+#!/bin/sh
+
+case "$1" in
+start|upgrade)
+	run_all $1 $2 $3 &
+	if [ "$1" == "upgrade" ]; then
+		killall mount.watch
+		killall plug.watch
+		echo 'killall utelnetd' >> /tmp/init.d/S99post-init
+		echo 'killall pure-ftpd' >> /tmp/init.d/S99post-init
+	else
+		if [ "`egrep -i '^LISTWATCH=ON' /conf/config`" == "" ] &&
+		   [ "`egrep -i '^LISTWATCH=OFF' /conf/config`" != "" ] ||
+		   [ "`egrep -i '^WDLXTV=OFF' /conf/config`" != "" ] ; then
+			 exit 0
+		fi
+
+		/usr/bin/list.watch &
+	fi
+	;;
+esac

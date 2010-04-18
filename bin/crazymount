@@ -1,0 +1,241 @@
+#!/bin/sh
+
+[ "`egrep -i '^CRAZYMOUNT=OFF' /conf/config`" != "" ] && exit 0
+
+# Crazy-mounter
+[ -f /conf/crazymount.wait ] && crazymountwait="`cat /conf/crazymount.wait`"
+touch /etc/fstab
+[ -f /conf/fstab ] && cat /conf/fstab >> /etc/fstab
+
+echo $crazymountwait | egrep '^[0-9]+$' >/dev/null 2>&1
+if [ "$?" -eq "0" ]; then
+    logger -t crazymount "used additional custom delay of ${crazymountwait}s"
+    sleep $crazymountwait
+fi
+
+blkid | logger -t crazyboot
+touch /tmp/.dontAddMounts /tmp/.addMounts
+
+blkid|grep /dev/sd|sed -e 's/:.*//' -e 's/^.*\///' > /tmp/devs
+
+for device in `cat /tmp/devs`; do 
+    LABEL=""
+    eval `blkid /dev/$device | cut -n -d':' -f2-9`
+    [ "$LABEL" == "" ] && LABEL=$device
+    [ "$UUID" == "" ] && UUID=$device
+        
+    if [ "$TYPE" == "vfat" ] || [ "$TYPE" == "ext2" ] || 
+       [ "$TYPE" == "ext3" ] || [ "$TYPE" == "ntfs" ]; then
+        [ "$TYPE" == "ntfs" ] && TYPE="ntfs-3g"
+        mount UUID=$UUID 2> /dev/null
+        if [ $? == 0 ] ; then
+            logger -t crazyboot -p notice "mounted /dev/$device via fstab"
+            xmount /dev/$device "$LABEL" $TYPE "NOMOUNT"
+        else
+            xmount /dev/$device "$LABEL" $TYPE
+        fi
+    fi
+done
+
+logger -t crazyboot "mounting app binaries..."
+mkdir -p /tmp/mnt/apps && mount -o bind /tmp/mnt/apps /apps
+
+coreExtras="`find /tmp/media/usb/ -maxdepth 2 | grep core-extras.app.bin | tail -n 1`"
+if [ "$coreExtras" != "" ] ; then
+   logger -t crazyboot "core-extras found, initializing before continuing..."
+   location="`dirname $coreExtras`"
+   device=`cat /etc/mtab | grep "$location" | cut -d' ' -f1 | cut -d'/' -f3`
+   eval `blkid /dev/$device | cut -n -d':' -f2-8`
+   [ "$UUID" == "" ] && UUID=$device
+   mkdir -p /tmp/mnt/$UUID
+   mount /dev/$device /tmp/mnt/$UUID
+   mkdir -p /apps/core-extras 
+   mount -o loop "$coreExtras" /apps/core-extras
+   echo "/tmp/mnt/$UUID/core-extras.app.bin /apps/core-extra auto defaults 0 0" >> /etc/fstab
+   for i in /apps/core-extras/lib/modules/2.6.15-TvDock/*.ko ; do
+    ln -s $i /lib/modules/2.6.15-TvDock
+   done
+   cat /apps/core-extras/lib/modules/2.6.15-TvDock/modules.dep >> /lib/modules/2.6.15-TvDock/modules.dep
+   export PATH=/apps/core-extras/sbin:/apps/core-extras/bin:$PATH
+fi
+
+blkid|grep /dev/sd|sed -e 's/:.*//' -e 's/^.*\///' > /tmp/devs
+
+for device in `cat /tmp/devs`; do
+    LABEL=""
+    eval `blkid /dev/$device | cut -n -d':' -f2-9`
+    [ "$LABEL" == "" ] && LABEL=$device
+    [ "$UUID" == "" ] && UUID=$device
+
+        if [ "$TYPE" == "vfat" ] || [ "$TYPE" == "ext2" ] ||
+           [ "$TYPE" == "ext3" ] || [ "$TYPE" == "ntfs" ] ||
+           [ "$TYPE" == "hfs" ] || [ "$TYPE" == "hfsplus" ]; then
+                [ "$TYPE" == "ntfs" ] && TYPE="ntfs-3g"
+                if [ "$TYPE" == "hfs" ] || [ "$TYPE" == "hfsplus" ]; then
+                    # fix hfs/hfsplus disk mounted ro because of unclean mount
+                    ### requires core-extras.app.bin ###
+                    which fsck_hfs
+                    /apps/core-extras/sbin/fsck_hfs /dev/$device
+                fi
+                mount UUID=$UUID 2> /dev/null
+                if [ $? == 0 ] ; then
+                    logger -t crazyboot -p notice "mounted /dev/$device via fstab"
+                    xmount /dev/$device "$LABEL" $TYPE "NOMOUNT"
+                else
+                    xmount /dev/$device "$LABEL" $TYPE
+                fi
+        fi
+
+    Mount=""
+    containsAPP=0
+    MP=""
+
+    location="`cat /etc/mtab | grep /dev/$device | grep /tmp/media/usb/ | cut -d' ' -f2 | sed -e 's/\\040/\ /' | tail -n 1`"
+    logger -t crazyboot "checking DEVICE /dev/$device for app.bins"
+    if [ -d "$location" ]; then
+        cd "$location"
+        Mount="/tmp/mnt/$UUID"
+        for i in `ls *.bin 2>/dev/null` ; do
+          [ ! -f "$i" ] && continue
+          case "$i" in
+            emergency-wdtv.bin)
+                #################### EMERGENCY RECOVERY #####################
+                if [ -f "$location/emergency-flash" ]; then
+                    logger -t crazyboot -p warning "undertaking emergency flash..."
+                    mv "$location/emergency-flash" "$location/emergency-flash.done" 
+                    echo "upgrade /dev/$device emergency-wdtv.bin" > /tmp/emergency.flash
+                    mkdir /tmp/init.d
+                    cp /etc/init.d/emergency-flash /tmp/init.d/S00emergency-flash
+                fi
+                ;;
+            wdtv.bin)
+                ;; # no-ops
+            wdlxtv.bin)
+                ;; # no-ops
+            root.bin)
+                ;; # no-ops
+            opt.bin)
+                logger -t crazyboot -p notice "Mounting Optware"
+                [ $containsAPP != 1 ] && mkdir -p $Mount && mount /dev/$device $Mount
+                mount -o loop -t auto $Mount/$i /opt
+                containsAPP=1
+                echo "$Mount/$i /opt auto defaults 0 0" >> /etc/fstab
+                ;;
+            *osd.bin)
+                a="`basename "$i"|sed -e 's/\.osd\.bin$//'`"
+                logger -t crazyboot -p notice "Mounting $a OSD overlay"
+                [ $containsAPP != 1 ] && mkdir -p $Mount && mount /dev/$device $Mount
+                mount -o loop -t auto $Mount/$i /osd
+                containsAPP=1
+                echo "$Mount/$i /osd auto defaults 0 0" >> /etc/fstab
+                ;;
+            core-extras.app.bin)
+                if [ ! -e /apps/core-extras ] ; then
+                    logger -t crazyboot -p notice "core-extras found on a $TYPE partition, for best effect it should be on a FAT, NTFS, ext2, or ext3 partition."
+                    [ $containsAPP != 1 ] && mkdir -p /tmp/mnt/$UUID && mount /dev/$device $Mount
+                    mkdir -p /apps/core-extras
+                    mount -o loop -t auto $Mount/$i /apps/core-extras
+                    echo "$Mount/$i /apps/core-extras auto defaults 0 0" >> /etc/fstab
+                fi
+                containsAPP=1
+                ;;
+            *.app.bin)
+                a=`basename "$i"|sed -e 's/\.app\.bin$//'`
+                logger -t crazyboot -p notice "$a app found"
+                [ $containsAPP != 1 ] && mkdir -p $Mount && mount /dev/$device $Mount
+                echo $Mount/$a >> /tmp/appsRoot
+                mkdir -p "/apps/$a"
+                logger -t crazyboot "Mounting $i at /apps/$a"
+                mount -o loop -t auto "$Mount/$i" "/apps/$a"
+                echo "$Mount/$i /apps/$a auto defaults 0 0" >> /etc/fstab
+                containsAPP=1
+                ;;
+            *)
+                ;;
+          esac
+        done
+
+        [ -f "$location/net.config" ] && cp $location/net.config /tmp && dos2unix /tmp/net.config && chmod a+x /tmp/net.config
+        [ -f "$location/net.mounts" ] && cp $location/net.mounts /tmp && dos2unix /tmp/net.mounts && chmod a+x /tmp/net.mounts
+        [ -f "$location/S00custom-options" ] && mkdir -p /tmp/init.d && cp $location/S00custom-options /tmp/init.d && dos2unix /tmp/init.d/S00custom-options && chmod a+x /tmp/init.d/S00custom-options
+        [ -f "$location/welcome_background_bg.jpg" ] && cp $location/welcome_background_bg.jpg /tmp && mount -o bind /tmp/welcome_background_bg.jpg /osd/image/welcome_background_bg.jpg
+        [ -f "$location/screen_saver.png" ] && cp $location/screen_saver.png /tmp && mount -o bind /tmp/screen_saver.png /osd/image/screen_saver.png
+        [ -f "$location/custom-language.01.mo" ] && cp $location/custom-language.01.mo /tmp && mount -o bind /tmp/custom-language.01.mo /osd/mo/cht.mo
+        [ -f "$location/custom-language.02.mo" ] && cp $location/custom-language.02.mo /tmp && mount -o bind /tmp/custom-language.02.mo /osd/mo/chs.mo
+        [ -f "$location/custom-language.03.mo" ] && cp $location/custom-language.03.mo /tmp && mount -o bind /tmp/custom-language.03.mo /osd/mo/kr.mo
+        [ -f "$location/custom-language.04.mo" ] && cp $location/custom-language.04.mo /tmp && mount -o bind /tmp/custom-language.04.mo /osd/mo/jp.mo
+        [ -f "$location/.keepalive" ] && echo /dev/$device >> /tmp/.keepalive
+	[ -f "$location/video_resume_point_table" ] && cp "$location/video_resume_point_table" /tmp && mount -o bind,sync "$location/video_resume_point_table" /tmp/video_resume_point_table && containsAPP=1
+ 
+        if [ -d "$location/.thumbDB" ] ; then
+            [ $containsAPP != 1 ] && mkdir -p $Mount && mount /dev/$device $Mount
+            mkdir -p /tmp/cache
+            mountpoint -q /tmp/cache
+            [ $? != 0 ] && mount -o bind "$Mount/.thumbDB" /tmp/cache && containsAPP=1 && logger -t crazyboot -p notice "Persistent thumb DB enabled on /dev/$device" 
+        fi
+        if [ -f "$Mount/.addMounts" ]; then
+            echo $UUID >> /tmp/.addMounts
+            mkdir -p "$location/extra-devices"
+            [ "$TYPE" == "ntfs-3g" ] && echo $UUID > /tmp/makeDirsAfter
+            logger -t crazyboot -p notice ".addMounts (Media Library scanning) enabled on /dev/$device"
+        fi
+        if [ $containsAPP == 0 ]; then
+            logger -t crazyboot "no apps found on /dev/$device"
+        else
+            logger -t crazyboot -p notice "extension[s] found on /dev/$device - do not remove device from wdtv"
+            cat /etc/mtab | grep $Mount | tail -n 1 >> /etc/fstab
+        fi
+	if [ "`egrep -i '^CRAZYMOUNT=APPSONLY' /conf/config`" != "" ] ; then
+		mountLOC="`cat /etc/mtab | grep /dev/$device | grep '/media/usb/' | cut -d' ' -f2 | sed -e 's/\\040/\ /'`"
+		umount "$mountLOC" 
+		logger -t crazyboot "Application loading only, unmounting any xmount'd devices"
+	fi
+        containsAPP=0;
+        sync
+        cd /
+    fi
+done
+cd /
+
+logger -t crazyboot "adjusting LIBPATH"
+cp /etc/ld.so.conf /tmp
+for i in `ls -d /opt/lib /osd/lib /apps/*/lib /tmp/mnt/core-extras/lib 2>/dev/null` ; do
+  [ -d "$i" ] && echo $i >> /tmp/ld.so.conf
+done
+
+/sbin/ldconfig -C /tmp/ld.so.cache -f /tmp/ld.so.conf
+
+for i in `ls /apps/*/lib/modules/2.6.15-TvDock/* 2>/dev/null` ; do
+   if [ "`basename $i`" == "modules.dep" ] ; then
+    cat $i >> /lib/modules/2.6.15-TvDock/modules.dep
+   else
+    ln -s $i /lib/modules/2.6.15-TvDock
+   fi
+done
+
+logger "adjusting PATH"
+for i in in `ls -d /opt/bin /opt/sbin /osd/bin /apps/*/sbin /apps/*/bin 2>/dev/null` ; 
+do
+  [ -d "$i" ] && PATH=$i:$PATH
+done
+export PATH=$PATH
+
+logger -t crazyboot "Path set to $PATH"
+echo PATH=$PATH > /tmp/sys.path
+
+# workaround for .addMounts on NTFS
+for i in `cat /tmp/makeDirsAfter 2> /dev/null`; do
+# makeDirsAfter is UUID or device/partition if no UUID
+    location="`cat /etc/mtab | grep $i | grep /tmp/media/usb/ | cut -d' ' -f2 | sed -e 's/\\040/\ /' | tail -n 1`"
+    dirName="`basename $location`"
+    cd /tmp/media/usb
+    for f in * ; do
+        if [ -d "$f" -a "$f" != "USB1" -a "$f" != "USB2" ] && 
+           [ "`blkid | grep "$f" | cut -d':' -f1 | grep '^/dev/sr'`" == "" ] &&
+           [ "$f" != "$dirName" ]; then
+            mkdir -p "$location/extra-devices/$f"
+        fi
+    done
+    cd /
+done
+rm -f /tmp/makeDirsAfter

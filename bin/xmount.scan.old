@@ -1,0 +1,40 @@
+#!/bin/sh
+
+logger `blkid /dev/$MDEV`
+
+if [ $? == 0 ]; then
+  FSTYPE=`blkid /dev/$MDEV | sed -e 's/^.*TYPE=\"//' -e 's/\".*$//'`
+  LABEL=`blkid /dev/$MDEV | sed -e 's/^\/dev\///' -e 's/^.*LABEL=\"//' -e 's/\".*$//' -e 's/:.*$//'`
+  if [ "$LABEL" == "" ]; then
+    LABEL=$MDEV
+  fi
+  UUID=`blkid /dev/$MDEV | sed -e 's/^.*UUID=\"//' -e 's/\".*$//'`
+
+  M="no"
+  OPTIONS=""
+
+  if [ $FSTYPE == "ext2" ] || [ $FSTYPE == "ext3" ] || [ $FSTYPE == "ntfs" ] || [ $FSTYPE == "hfs" ] || [ $FSTYPE == "hfsplus" ] || [ $FSTYPE == "vfat" ] || [ $FSTYPE == "msdos" ]; then
+    M="yes"
+  fi
+
+  if [ $FSTYPE == "xfs" ]; then
+    modprobe xfs
+    [ $? != 0 ] && logger "XFS mount failed! download core-extras.app.bin from http://b-rad.cc" && exit
+    M="yes"
+  fi
+  if [ $FSTYPE == "reiserfs" ]; then
+    modprobe reiserfs
+    [ $? != 0 ] && logger "reiserFS mount failed! download core-extras.app.bin from http://b-rad.cc" && exit
+    M="yes"
+  fi
+
+  if [ $M == "yes" ]; then
+      OPTIONS=`echo " $OPTIONS " | sed 's/-o//'`
+      logger "xmount.scan: Will mount /dev/$MDEV $LABEL $FSTYPE $OPTIONS"
+
+      xmount /dev/$MDEV  $LABEL  $FSTYPE  $OPTIONS
+  else
+     logger "xmount.scan: Will not mount /dev/$MDEV ($FSTYPE)"
+  fi
+fi
+

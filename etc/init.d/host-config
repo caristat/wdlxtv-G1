@@ -1,0 +1,20 @@
+#!/bin/sh
+
+eval `grep \^defaultHOST= /conf/config`
+eval `grep \^TZ= /conf/config`
+
+if [ "$TZ" != "" ]; then
+  echo $TZ > /etc/TZ
+fi
+
+if [ "$defaultHOST" != "" ]; then
+  hostname $defaultHOST
+else
+    a=`head -1 /dev/urandom|md5sum|cut -c1-5`
+    defaultHOST="WDTV-$a"
+    config_tool -c defaultHOST=$defaultHOST
+    logger Generated new defaultHOST=$defaultHOST
+    hostname $defaultHOST
+fi
+
+u_asp

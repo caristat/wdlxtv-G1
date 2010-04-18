@@ -1,0 +1,14 @@
+#!/bin/sh
+
+#FSTYPE=`blkid /dev/$MDEV | sed -e 's/^.*TYPE=\"//' -e 's/\".*$//'`
+#[ "$FSTYPE" = "" ] && exit 1
+#[ "$FSTYPE" == "ntfs" ] && FSTYPE="ntfs-3g"
+
+echo "usb.agent: $MDEV"
+
+#LABEL=`blkid /dev/$MDEV | sed -e 's/^\/dev\///' -e 's/^.*LABEL=\"//' -e 's/\".*$//' -e 's/:.*$//'`
+#[ "$LABEL" == "" ] && LABEL=$MDEV
+
+#echo xmount /dev/$MDEV "$LABEL" $FSTYPE
+#xmount /dev/$MDEV "$LABEL" $FSTYPE
+#[ ! -f /tmp/messages.txt ] && echo "usb.agent hotplugged /dev/$MDEV : $FSTYPE" >> /tmp/usb.agent.log

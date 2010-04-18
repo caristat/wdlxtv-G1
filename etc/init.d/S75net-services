@@ -1,0 +1,5 @@
+#!/bin/sh
+
+/usr/sbin/utelnetd -d
+#/usr/sbin/pure-ftpd -D -B
+
